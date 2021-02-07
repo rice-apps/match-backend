@@ -6,8 +6,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "rm -fr public/scripts && mkdir -p public/scripts && browserify -t [ babelify --presets [ react ] ] client-src/scripts/*.js | uglifyjs > public/scripts/bundle.min.js",
-    "start": "node server.js",
-    "build-n-start": "npm run build && npm run start"
+    "start": "node server/server.js",
+    "build-n-start": "npm run build && npm run start",
+    "preinstall": "rm -fr public/assets",
+    "postinstall": "cp -r node_modules/@salesforce-ux/design-system/assets public"
   },
   "repository": {
     "type": "git",
@@ -20,12 +22,19 @@
   },
   "homepage": "https://github.com/rice-apps/match-backend#readme",
   "dependencies": {
-    "browserify": "^17.0.0",
+    "@salesforce-ux/design-system": "^2.12.1",
+    "browserify": "^16.5.1",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "express-session": "^1.17.1",
-    "jsforce": "^1.10.1",
-    "uglifyjs": "^2.4.11"
+    "jsforce": "^1.9.3",
+    "react": "^15.2.0",
+    "react-dom": "^15.2.0"
+  },
+  "devDependencies": {
+    "babelify": "^7.3.0",
+    "babel-preset-react": "^6.24.1",
+    "uglify-js": "^2.7.0"
   },
   "engines": {
     "node": "10.16.x",
