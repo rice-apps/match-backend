@@ -30,9 +30,6 @@ app.use(
 	})
 );
 
-// Serve HTML pages under root directory
-app.use('/', express.static(path.join(__dirname, '../public')));
-
 /**
  *  Attemps to retrieves the server session.
  *  If there is no session, redirects with HTTP 401 and an error message
@@ -53,6 +50,12 @@ function resumeSalesforceConnection(session) {
 		version: process.env.apiVersion
 	});
 }
+
+// Serve simple message at root directory
+app.get('/', function(request, response) {
+	response.status(200).send('You have reached the Match backend!');
+	return;
+});
 
 /**
  * Login endpoint
