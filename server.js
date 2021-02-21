@@ -92,7 +92,7 @@ app.get('/auth/callback', function(request, response) {
 			accessToken: conn.accessToken
 		};
 		// Redirect to app main page
-		return response.redirect('http://localhost/8080/index.html');
+		return response.redirect('http://localhost:8080/index.html');
 	});
 });
 
@@ -120,7 +120,7 @@ app.get('/auth/logout', function(request, response) {
 		});
 
 		// Redirect to app main page
-		return response.redirect('http://localhost/8080/index.html');
+		return response.redirect('http://localhost:8080/index.html');
 	});
 });
 
