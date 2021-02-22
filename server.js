@@ -2,10 +2,12 @@
 require('dotenv').config();
 
 // 3rd party dependencies
-const path = require('path'),
-	express = require('express'),
-	session = require('express-session'),
-	jsforce = require('jsforce');
+var path = require('path');
+var express = require('express');
+var session = require('express-session');
+var jsforce = require('jsforce');
+
+var cors = require('cors');
 
 // Instantiate Salesforce client with .env configuration
 const oauth2 = new jsforce.OAuth2({
@@ -15,27 +17,51 @@ const oauth2 = new jsforce.OAuth2({
 	redirectUri: process.env.callbackUrl
 });
 
+console.log("REDIRECT: ", process.env.callbackUrl);
+
 // Setup HTTP server
 const app = express();
 const port = process.env.PORT || 8080;
 app.set('port', port);
 
+// TODO: Remove before deployment. Only necessary for testing
+app.use(cors());
+app.options('*', cors());
+// Allow CORS
+// app.use(function(req, res, next) {
+//     if (req.headers.origin) {
+//         res.header('Access-Control-Allow-Origin', '*')
+//         res.header('Access-Control-Allow-Headers', '*')
+//         res.header('Access-Control-Allow-Methods', '*')
+//         if (req.method === 'OPTIONS') return res.sendStatus(200);
+//     }
+//     next()
+// })
+// app.use(cors({ credentials: true, origin: true }))
+
+
+console.log("Secret key: ", process.env.sessionSecretKey);
+
+
 // Enable server-side sessions
 app.use(
 	session({
 		secret: process.env.sessionSecretKey,
-		cookie: { secure: process.env.isHttps === 'true' },
-		resave: false,
-		saveUninitialized: false
+		cookie: { secure: process.env.isHttps === 'true', httpOnly: 'false', maxAge: 8*60*60*1000 },
+		resave: true,
+		saveUninitialized: true,
 	})
 );
+
+
 
 /**
  *  Attemps to retrieves the server session.
  *  If there is no session, redirects with HTTP 401 and an error message
  */
 function getSession(request, response) {
-	const session = request.session;
+	var session = request.session;
+	console.log("SESSION: ", session);
 	if (!session.sfdcAuth) {
 		response.status(401).send('No active session');
 		return null;
@@ -61,6 +87,7 @@ app.get('/', function(request, response) {
  * Login endpoint
  */
 app.get('/auth/login', function(request, response) {
+	console.log("GOT LOGIN REQUEST");
 	// Redirect to Salesforce login/authorization page
 	response.redirect(oauth2.getAuthorizationUrl({ scope: 'api' }));
 });
@@ -69,6 +96,7 @@ app.get('/auth/login', function(request, response) {
  * Login callback endpoint (only called by Salesforce)
  */
 app.get('/auth/callback', function(request, response) {
+	console.log("RECEIVED CALLBACK!")
 	if (!request.query.code) {
 		response.status(500).send('Failed to get authorization code from server callback.');
 		return;
@@ -86,13 +114,19 @@ app.get('/auth/callback', function(request, response) {
 			return;
 		}
 
+		console.log("AUTHORIZED");
+		console.log("URL: ", conn.instanceUrl);
+		console.log("TOKEN: ", conn.accessToken);
 		// Store oauth session data in server (never expose it directly to client)
 		request.session.sfdcAuth = {
-			instanceUrl: conn.instanceUrl,
-			accessToken: conn.accessToken
+			'instanceUrl': conn.instanceUrl,
+			'accessToken': conn.accessToken
 		};
+		console.log("SAVED")
+
+		console.log("REQUEST SESSION:", request.session);
 		// Redirect to app main page
-		return response.redirect('http://localhost:8080/index.html');
+		response.redirect('http://localhost:3000/');
 	});
 });
 
@@ -120,7 +154,7 @@ app.get('/auth/logout', function(request, response) {
 		});
 
 		// Redirect to app main page
-		return response.redirect('http://localhost:8080/index.html');
+		return response.redirect('http://localhost:3000/index.html');
 	});
 });
 
@@ -128,11 +162,14 @@ app.get('/auth/logout', function(request, response) {
  * Endpoint for retrieving currently connected user
  */
 app.get('/auth/whoami', function(request, response) {
+	console.log("Getting session");
 	const session = getSession(request, response);
 	if (session == null) {
+		console.log("No session found")
+		// console.log(response);
 		return;
 	}
-
+	console.log("====== Found session =======")
 	// Request session info from Salesforce
 	const conn = resumeSalesforceConnection(session);
 	conn.identity(function(error, res) {
