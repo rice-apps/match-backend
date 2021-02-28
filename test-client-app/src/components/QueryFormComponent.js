@@ -8,7 +8,7 @@ class QueryFormComponent extends Component {
     };
   }
 
-  handleSubmit(e) {
+  handleSubmit = (e) => {
     e.preventDefault();
     var query = this.state.query.trim();
     if (!query) {
@@ -17,7 +17,7 @@ class QueryFormComponent extends Component {
     this.props.onExecuteQuery({query: query});
   }
 
-  handleQueryChangefunction(e) {
+  handleQueryChange = (e) => {
     this.setState({query: e.target.value});
   }
 

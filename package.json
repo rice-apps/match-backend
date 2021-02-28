@@ -7,9 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "rm -fr public/scripts && mkdir -p public/scripts && browserify -t [ babelify --presets [ react ] ] client-src/scripts/*.js | uglifyjs > public/scripts/bundle.min.js",
     "start": "node server.js",
-    "build-n-start": "npm run build && npm run start",
-    "preinstall": "rm -fr public/assets",
-    "postinstall": "cp -r node_modules/@salesforce-ux/design-system/assets public"
+    "build-n-start": "npm run build && npm run start"
   },
   "repository": {
     "type": "git",

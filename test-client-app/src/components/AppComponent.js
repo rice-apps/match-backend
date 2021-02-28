@@ -12,7 +12,7 @@ class AppComponent extends Component {
     };
   }
 
-  componentDidMount() {
+  componentDidMount(){
     const that = this;
     // Get logged in user
     fetch('/auth/whoami', {
@@ -22,7 +22,7 @@ class AppComponent extends Component {
               Accept: 'application/json',
               'Content-Type': 'application/json',
           }
-      }).then(function(response) {
+      }).then((response) => {
       console.log("RECEIVED RESPONSE");
       if (response.ok) {
         response.json().then(function(json) {
@@ -33,10 +33,10 @@ class AppComponent extends Component {
       } else {
         console.error('Unauthorized', JSON.stringify(response));
       }
-    });
+      });
   }
 
-  handleQueryExecution(data) {
+  handleQueryExecution = (data) => {
     const that = this;
     // Send SOQL query to server
     const queryUrl = '/query?q='+ encodeURI(data.query);

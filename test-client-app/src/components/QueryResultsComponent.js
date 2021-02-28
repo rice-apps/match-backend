@@ -5,7 +5,7 @@ class QueryResultsComponent extends Component {
     return (
       <div>
         <p className="slds-form-element__label  slds-text-heading--medium">Results</p>
-        <div className="slds-box slds-theme--shade">
+        <div className="slds-box slds-theme--shade" style={{"text-align":"left"}}>
           <pre>{this.props.result}</pre>
         </div>
       </div>
