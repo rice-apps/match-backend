@@ -42,3 +42,31 @@ cd test-client
 npm run start
 ```
 
+
+# Example Responses
+## /contacts Endpoint
+‘/contacts/’  → 
+```json
+{
+    "newBees" :  [
+        [“Email Address”, “Last Name”, “First Name”, ...],
+        [“email@website1”, “last1”, first1”, ...],
+        [“email@website2”, “last2”, first2”, ...],
+    ],
+    "mentors" :  [
+        [“Email Address”, “Last Name”, “First Name”, ...],
+        [“email@website1”, “last1”, first1”, ...],
+        [“email@website2”, “last2”, first2”, ...],
+    ],
+}
+```
+
+## /relationships Endpoint
+```json
+‘/relationships/’  → 
+{
+    "relationships" :  [
+        ...
+    ] 
+}
+```
