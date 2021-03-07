@@ -17,6 +17,14 @@ const oauth2 = new jsforce.OAuth2({
 	redirectUri: process.env.callbackUrl
 });
 
+// Salesforce's ID for the record type of NewBee and Mentor
+// May need to change when migrating to live salesforce, or if the newBee/mentor record types
+// are updated on the salesforce side.
+const RECORD_TYPE_ID = {
+	newBee: "0121U0000003rkiQAA",
+	mentor: "0121U0000003rknQAA", // Emphasis on the "n" !!!
+}
+
 console.log("REDIRECT: ", process.env.callbackUrl);
 
 // Setup HTTP server
@@ -200,6 +208,98 @@ app.get('/query', function(request, response) {
 			return;
 		} else {
 			response.send(result);
+			return;
+		}
+	});
+});
+
+/**
+ * Endpoint for performing a SOQL query on Salesforce
+ * 
+ * Target Format:
+ *	{
+ *		"newBees" :  [
+ *			[“Email Address”, “Name”, "Zip Code"...],
+ *			[“email@website1”, “name1”, zip1”, ...],
+ *			[“email@website2”, “name2”, zip2”, ...],
+ *		],
+ *		"mentors" :  [
+ *			[“Email Address”, “Name”, "Zip Code"...],
+ *			[“email@website1”, “name1”, zip1”, ...],
+ *			[“email@website2”, “name2”, zip2”, ...],
+ *		],
+ *	}
+*/
+ app.get('/contacts', function(request, response) {
+	console.log("Received contacts request")
+	const session = getSession(request, response);
+	if (session == null) {
+		return;
+	}
+
+	const query = "SELECT AccountId, Email, Name, RecordTypeId, MailingAddress FROM Contact";
+	if (!query) {
+		response.status(400).send('Missing query parameter.');
+		return;
+	}
+
+	const conn = resumeSalesforceConnection(session);
+	conn.query(query, function(error, result) {
+		if (error) {
+			console.error('Salesforce data API error: ' + JSON.stringify(error));
+			response.status(500).json(error);
+			return;
+		} else {
+			// Response worked
+			var allAccountsTable = [["Email", "Account Id", "Name", "Zip Code"]]
+			// Fill out the result table
+			result.records.forEach(account => {
+				allAccountsTable.push([account.Email, account.AccountId, account.Name, 
+					account.MailingAddress.postalCode, account.RecordTypeId]);
+			})
+			// Filter contacts by Newbee/Mentors
+			var newBeeTable = allAccountsTable.filter((account, i) =>
+				i === 0 || account[4] === RECORD_TYPE_ID.newBee );
+			var mentorTable = allAccountsTable.filter((account, i) =>
+				i === 0 || account[4] === RECORD_TYPE_ID.mentor);
+
+			var finalResult = {
+				"newBees": newBeeTable,
+				"mentors": mentorTable
+			}
+			// Send result to client (front end) 
+			response.send(finalResult);
+			return;
+		}
+	});
+});
+
+
+/**
+ * Endpoint for performing a SOQL query on Salesforce
+ */
+ app.get('/relationships', function(request, response) {
+	console.log("Received relationships request")
+	const session = getSession(request, response);
+	if (session == null) {
+		return;
+	}
+
+	const query = "SELECT Name, Type FROM AccountRelationship";
+	if (!query) {
+		response.status(400).send('Missing query parameter.');
+		return;
+	}
+
+	const conn = resumeSalesforceConnection(session);
+	conn.query(query, function(error, result) {
+		if (error) {
+			console.error('Salesforce data API error: ' + JSON.stringify(error));
+			response.status(500).json(error);
+			return;
+		} else {
+			// Send result to client (frontend) 
+			response.send(result.records);
 			return;
 		}
 	});
