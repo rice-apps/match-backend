@@ -9,14 +9,6 @@ var jsforce = require('jsforce');
 
 var cors = require('cors');
 
-// Instantiate Salesforce client with .env configuration
-const oauth2 = new jsforce.OAuth2({
-	loginUrl: process.env.domain,
-	clientId: process.env.consumerKey,
-	clientSecret: process.env.consumerSecret,
-	redirectUri: process.env.callbackUrl
-});
-
 // Salesforce's ID for the record type of NewBee and Mentor
 // May need to change when migrating to live salesforce, or if the newBee/mentor record types
 // are updated on the salesforce side.
@@ -24,6 +16,17 @@ const RECORD_TYPE_ID = {
 	newBee: "0121U0000003rkiQAA",
 	mentor: "0121U0000003rknQAA", // Emphasis on the "n" !!!
 }
+
+const CONTACT_QUERY = "SELECT Id, Email, Name, RecordTypeId, MailingAddress FROM Contact";
+const RELATIONSHIP_QUERY = "SELECT npe4__Contact__c, npe4__RelatedContact__c, npe4__Type__c FROM npe4__Relationship__c";
+
+// Instantiate Salesforce client with .env configuration
+const oauth2 = new jsforce.OAuth2({
+	loginUrl: process.env.domain,
+	clientId: process.env.consumerKey,
+	clientSecret: process.env.consumerSecret,
+	redirectUri: process.env.callbackUrl
+});
 
 console.log("REDIRECT: ", process.env.callbackUrl);
 
@@ -214,7 +217,58 @@ app.get('/query', function(request, response) {
 });
 
 /**
- * Endpoint for performing a SOQL query on Salesforce
+ * Endpoint for querying all salesforce contact records
+ * 
+*/
+app.get('/contacts', function(request, response) {
+	console.log("Received contacts request")
+	const session = getSession(request, response);
+	if (session == null) {
+		return;
+	}
+
+	const conn = resumeSalesforceConnection(session);
+	conn.query(CONTACT_QUERY, function(error, result) {
+		if (error) {
+			console.error('Salesforce data API error: ' + JSON.stringify(error));
+			response.status(500).json(error);
+			return;
+		} else {
+			response.send({
+				"contacts": result.records
+			});
+			return;
+		}
+	});
+});
+
+/*
+ * Endpoint for querying all salesforce relationship records.
+ */
+app.get('/relationships', function(request, response) {
+	console.log("Received relationships request")
+	const session = getSession(request, response);
+	if (session == null) {
+		return;
+	}
+
+	const conn = resumeSalesforceConnection(session);
+	conn.query(RELATIONSHIP_QUERY, function(error, result) {
+		if (error) {
+			console.error('Salesforce data API error: ' + JSON.stringify(error));
+			response.status(500).json(error);
+			return;
+		} else {
+			response.send({
+				"relationships" :result.records
+			});
+			return;
+		}
+	});
+});
+
+/**
+ * Endpoint for retrieving all left and right data from salesforce
  * 
  * Target Format:
  *	{
@@ -230,80 +284,82 @@ app.get('/query', function(request, response) {
  *		],
  *	}
 */
- app.get('/contacts', function(request, response) {
-	console.log("Received contacts request")
+ app.get('/leftRightData', function(request, response) {
+	console.log("Received contacts & relationship request")
 	const session = getSession(request, response);
 	if (session == null) {
 		return;
 	}
 
-	const query = "SELECT AccountId, Email, Name, RecordTypeId, MailingAddress FROM Contact";
-	if (!query) {
-		response.status(400).send('Missing query parameter.');
-		return;
-	}
+	// TODO: use (npo02__MembershipJoinDate__c ?) to access created date
 
 	const conn = resumeSalesforceConnection(session);
-	conn.query(query, function(error, result) {
+	conn.query(CONTACT_QUERY, function(error, result) {
 		if (error) {
 			console.error('Salesforce data API error: ' + JSON.stringify(error));
 			response.status(500).json(error);
 			return;
 		} else {
+			console.log(result.records);
 			// Response worked
-			var allAccountsTable = [["Email", "Account Id", "Name", "Zip Code"]]
-			// Fill out the result table
-			result.records.forEach(account => {
-				allAccountsTable.push([account.Email, account.AccountId, account.Name, 
-					account.MailingAddress.postalCode, account.RecordTypeId]);
-			})
-			// Filter contacts by Newbee/Mentors
-			var newBeeTable = allAccountsTable.filter((account, i) =>
-				i === 0 || account[4] === RECORD_TYPE_ID.newBee );
-			var mentorTable = allAccountsTable.filter((account, i) =>
-				i === 0 || account[4] === RECORD_TYPE_ID.mentor);
+			let allContacts = result.records;
+		
+			// Query Relationships
+			conn.query(RELATIONSHIP_QUERY, function(error, result) {
+				if (error) {
+					console.error('Salesforce data API error: ' + JSON.stringify(error));
+					response.status(500).json(error);
+					return;
+				} else {
+					// Add relationship data (mentor/mentee information) to contacts
+					let allRelationships = result.records;
+					allRelationships
+						.filter((relationship) => relationship.npe4__Type__c === "NewBee")
+						.forEach((relationship) => {
+							console.log("PROCESSING RELATIONSHIP")
+							let newBeeId = relationship.npe4__Contact__c
+							let mentorId = relationship.npe4__RelatedContact__c
+							// Add email of matched person in the appropriate "newbee" row
+							let newBee = allContacts.find((contact) => contact.Id === newBeeId);
+							let mentor = allContacts.find((contact) => contact.Id === mentorId);
+							
+							// Todo: change to just use Id in match column
+							newBee.match = mentor.Email || mentor.Name || mentor.Id // Use name or Id if no email available
+							newBee.mentorId = mentorId
 
-			var finalResult = {
-				"newBees": newBeeTable,
-				"mentors": mentorTable
-			}
-			// Send result to client (front end) 
-			response.send(finalResult);
-			return;
+					})
+
+					// Construct result table
+					var newBeeTable = [["Email", "Name", "Zip Code", "Salesforce Id", "NewBee/Mentor", "Mentor ID", "Match"]]
+					var mentorTable = [["Email", "Name", "Zip Code", "Salesforce Id", "NewBee/Mentor"]]
+
+					// Fill out the result table
+					allContacts.forEach(contact => {
+						if (contact.RecordTypeId === RECORD_TYPE_ID.newBee) {
+							// Process NewBee
+							newBeeTable.push([contact.Email, contact.Name, contact.MailingAddress.postalCode, contact.Id, 
+								"NewBee", contact.mentorId, contact.match]);
+						} else if (contact.RecordTypeId === RECORD_TYPE_ID.mentor) {
+							// Process Mentor
+							mentorTable.push([contact.Email, contact.Name, contact.MailingAddress.postalCode, contact.Id, 
+								"Mentor"]);
+						}
+					})
+					var finalResult = {
+						"newBees": newBeeTable,
+						"mentors": mentorTable
+					}
+
+					// Send result to client (frontend) 
+					response.send(finalResult);
+					return;
+				}
+			});
 		}
 	});
 });
 
 
-/**
- * Endpoint for performing a SOQL query on Salesforce
- */
- app.get('/relationships', function(request, response) {
-	console.log("Received relationships request")
-	const session = getSession(request, response);
-	if (session == null) {
-		return;
-	}
-
-	const query = "SELECT Name, Type FROM AccountRelationship";
-	if (!query) {
-		response.status(400).send('Missing query parameter.');
-		return;
-	}
-
-	const conn = resumeSalesforceConnection(session);
-	conn.query(query, function(error, result) {
-		if (error) {
-			console.error('Salesforce data API error: ' + JSON.stringify(error));
-			response.status(500).json(error);
-			return;
-		} else {
-			// Send result to client (frontend) 
-			response.send(result.records);
-			return;
-		}
-	});
-});
 
 app.listen(app.get('port'), function() {
 	console.log('Server started: http://localhost:' + app.get('port') + '/');

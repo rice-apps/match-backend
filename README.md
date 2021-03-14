@@ -44,12 +44,12 @@ npm run start
 
 
 # Example Responses
-## /contacts Endpoint
-‘/contacts/’  → 
+## /leftRightData Endpoint (main endpoint for frontend)
+‘/leftRightData’  → 
 ```json
 {
     "newBees" :  [
-        [“Email Address”, “Last Name”, “First Name”, ...],
+        [“Email Address”, “Last Name”, “First Name”, ..., "MATCH"],
         [“email@website1”, “last1”, first1”, ...],
         [“email@website2”, “last2”, first2”, ...],
     ],
@@ -61,9 +61,19 @@ npm run start
 }
 ```
 
+## /contacts Endpoint
+‘/contacts’  → 
+```json
+{
+    "contacts" :  [
+        ...
+    ] 
+}
+```
+
 ## /relationships Endpoint
 ```json
-‘/relationships/’  → 
+‘/relationships’  → 
 {
     "relationships" :  [
         ...
