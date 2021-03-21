@@ -2,10 +2,11 @@
 require('dotenv').config();
 
 // 3rd party dependencies
-var path = require('path');
-var express = require('express');
-var session = require('express-session');
-var jsforce = require('jsforce');
+const path = require('path');
+const express = require('express');
+const session = require('express-session');
+const jsforce = require('jsforce');
+const bodyParser = require('body-parser');
 
 var cors = require('cors');
 
@@ -32,6 +33,12 @@ console.log("REDIRECT: ", process.env.callbackUrl);
 
 // Setup HTTP server
 const app = express();
+// setup middleware
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({
+  extended: false
+}));
+
 const port = process.env.PORT || 8080;
 app.set('port', port);
 
@@ -330,7 +337,7 @@ app.get('/relationships', function(request, response) {
 					})
 
 					// Construct result table
-					var newBeeTable = [["Email", "Name", "Zip Code", "Salesforce Id", "NewBee/Mentor", "Mentor ID", "Match"]]
+					var newBeeTable = [["Email", "Name", "Zip Code", "Salesforce Id", "NewBee/Mentor", "Mentor ID"]]
 					var mentorTable = [["Email", "Name", "Zip Code", "Salesforce Id", "NewBee/Mentor"]]
 
 					// Fill out the result table
@@ -338,7 +345,7 @@ app.get('/relationships', function(request, response) {
 						if (contact.RecordTypeId === RECORD_TYPE_ID.newBee) {
 							// Process NewBee
 							newBeeTable.push([contact.Email, contact.Name, contact.MailingAddress.postalCode, contact.Id, 
-								"NewBee", contact.mentorId, contact.match]);
+								"NewBee", contact.mentorID]);
 						} else if (contact.RecordTypeId === RECORD_TYPE_ID.mentor) {
 							// Process Mentor
 							mentorTable.push([contact.Email, contact.Name, contact.MailingAddress.postalCode, contact.Id, 
@@ -357,6 +364,94 @@ app.get('/relationships', function(request, response) {
 			});
 		}
 	});
+});
+
+
+/*
+ * Endpoint for creating a relationship between two contacts
+ */
+// TODO: change to POST request
+app.post('/match', function(request, response) {
+	console.log("Received MATCH request")
+	const session = getSession(request, response);
+	if (session == null) {
+		return;
+	}
+	const newbeeID = request.query.newbee;
+	const mentorID = request.query.mentor;
+	console.log("newbeeId: " + newbeeID)
+	console.log("mentorId: " + mentorID)
+
+	const conn = resumeSalesforceConnection(session);
+	let new_relationship = {
+		"npe4__Contact__c": newbeeID, // ID of the first contact
+		"npe4__RelatedContact__c": mentorID, // ID of the second contact
+		"npe4__Type__c": "Mentor" // second contact is the mentor of the first contact
+	}
+	conn.sobject("npe4__Relationship__c").create(new_relationship, function(err, ret) {
+		if (err || !ret.success) { return console.error(err, ret); }
+		console.log("Created record id : " + ret.id);
+
+		response.status(200).send('Succesfully matched! New record ID: ' + ret.id);
+	});
+});
+
+/*
+ * Endpoint for deleting a relationship between two contacts
+ */
+// TODO: change to POST
+app.get('/unmatch', function(request, response) {
+	console.log("Received UN-MATCH request")
+	const session = getSession(request, response);
+	if (session == null) {
+		return;
+	}
+	const newbeeID = request.query.newbee;
+	const mentorID = request.query.mentor;
+	console.log("newbeeId: " + newbeeID)
+	console.log("mentorId: " + mentorID)
+
+	const conn = resumeSalesforceConnection(session);
+
+	
+//const CONTACT_QUERY = "SELECT Id, Email, Name, RecordTypeId, MailingAddress FROM Contact";
+//const RELATIONSHIP_QUERY = "SELECT npe4__Contact__c, npe4__RelatedContact__c, npe4__Type__c FROM npe4__Relationship__c WHERE ";
+	conn.sobject("npe4__Relationship__c")
+	  .find({npe4__Contact__c: mentorID, npe4__RelatedContact__c: newbeeID})
+	  .execute(function(err, records) {
+		console.log(records)
+	})
+
+	conn.sobject("npe4__Relationship__c")
+	  .find({npe4__Contact__c: newbeeID, npe4__RelatedContact__c: mentorID}) 
+	  .execute(function(err, records){
+		console.log(records);
+	})
+
+// 	// Single record deletion
+//   conn.sobject("Account").destroy('0017000000hOMChAAO', function(err, ret) {
+// 	if (err || !ret.success) { return console.error(err, ret); }
+// 	console.log('Deleted Successfully : ' + ret.id);
+//   });
+
+// conn.sobject("Contact")
+//   .find(
+//     // conditions in JSON object
+//     { LastName : { $like : 'A%' },
+//       CreatedDate: { $gte : jsforce.Date.YESTERDAY },
+//       'Account.Name' : 'Sony, Inc.' },
+//     // fields in JSON object
+//     { Id: 1,
+//       Name: 1,
+//       CreatedDate: 1 }
+//   )
+//   .sort({ CreatedDate: -1, Name : 1 })
+//   .limit(5)
+//   .skip(10)
+//   .execute(function(err, records) {
+//     if (err) { return console.error(err); }
+//     console.log("fetched : " + records.length);
+//   });
 });
 
 
