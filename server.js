@@ -371,7 +371,7 @@ app.get('/relationships', function(request, response) {
  * Endpoint for creating a relationship between two contacts
  */
 // TODO: change to POST request
-app.post('/match', function(request, response) {
+app.get('/match', function(request, response) {
 	console.log("Received MATCH request")
 	const session = getSession(request, response);
 	if (session == null) {
@@ -413,45 +413,21 @@ app.get('/unmatch', function(request, response) {
 
 	const conn = resumeSalesforceConnection(session);
 
-	
-//const CONTACT_QUERY = "SELECT Id, Email, Name, RecordTypeId, MailingAddress FROM Contact";
-//const RELATIONSHIP_QUERY = "SELECT npe4__Contact__c, npe4__RelatedContact__c, npe4__Type__c FROM npe4__Relationship__c WHERE ";
 	conn.sobject("npe4__Relationship__c")
 	  .find({npe4__Contact__c: mentorID, npe4__RelatedContact__c: newbeeID})
 	  .execute(function(err, records) {
-		console.log(records)
-	})
-
-	conn.sobject("npe4__Relationship__c")
-	  .find({npe4__Contact__c: newbeeID, npe4__RelatedContact__c: mentorID}) 
-	  .execute(function(err, records){
-		console.log(records);
-	})
-
-// 	// Single record deletion
-//   conn.sobject("Account").destroy('0017000000hOMChAAO', function(err, ret) {
-// 	if (err || !ret.success) { return console.error(err, ret); }
-// 	console.log('Deleted Successfully : ' + ret.id);
-//   });
-
-// conn.sobject("Contact")
-//   .find(
-//     // conditions in JSON object
-//     { LastName : { $like : 'A%' },
-//       CreatedDate: { $gte : jsforce.Date.YESTERDAY },
-//       'Account.Name' : 'Sony, Inc.' },
-//     // fields in JSON object
-//     { Id: 1,
-//       Name: 1,
-//       CreatedDate: 1 }
-//   )
-//   .sort({ CreatedDate: -1, Name : 1 })
-//   .limit(5)
-//   .skip(10)
-//   .execute(function(err, records) {
-//     if (err) { return console.error(err); }
-//     console.log("fetched : " + records.length);
-//   });
+		if (err) { return console.error(err); }
+		let relationshipIDs = records.map(records => records.Id);
+		console.log(relationshipIDs);
+		// Multiple records deletion
+		conn.sobject("npe4__Relationship__c"). del(relationshipIDs, function(err, rets) {
+			if (err) { return console.error(err); }
+			rets.forEach((ret) => {
+				if (ret.success) console.log("Deleted Successfully : " + ret.id);
+			})
+			response.status(200).send('Succesfully unmatched! IDs: ' + relationshipIDs);
+		});
+	});
 });
 
 
