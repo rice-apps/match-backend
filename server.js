@@ -370,7 +370,7 @@ app.get('/relationships', function(request, response) {
  * Endpoint for creating a relationship between two contacts
  */
 // TODO: change to POST request
-app.get('/match', function(request, response) {
+app.post('/match', function(request, response) {
 	console.log("Received MATCH request")
 	const session = getSession(request, response);
 	if (session == null) {
@@ -423,6 +423,7 @@ app.get('/match', function(request, response) {
 			"npe4__Contact__c": newbeeID, // ID of the first contact
 			"npe4__RelatedContact__c": mentorID, // ID of the second contact
 			"npe4__Type__c": "Mentor" // second contact is the mentor of the first contact
+		
 		}
 		
 		conn.sobject("npe4__Relationship__c").create(new_relationship, function(err, ret) {
@@ -438,7 +439,7 @@ app.get('/match', function(request, response) {
  * Endpoint for deleting a relationship between two contacts
  */
 // TODO: change to POST
-app.get('/unmatch', function(request, response) {
+app.post('/unmatch', function(request, response) {
 	console.log("Received UN-MATCH request")
 	const session = getSession(request, response);
 	if (session == null) {
