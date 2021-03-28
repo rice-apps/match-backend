@@ -329,8 +329,6 @@ app.get('/relationships', function(request, response) {
 							let newBee = allContacts.find((contact) => contact.Id === newBeeId);
 							let mentor = allContacts.find((contact) => contact.Id === mentorId);
 							
-							// Todo: change to just use Id in match column
-							newBee.match = mentor.Email || mentor.Name || mentor.Id // Use name or Id if no email available
 							newBee.mentorId = mentorId
 
 					})
@@ -344,7 +342,7 @@ app.get('/relationships', function(request, response) {
 						if (contact.RecordTypeId === RECORD_TYPE_ID.newBee) {
 							// Process NewBee
 							newBeeTable.push([contact.CreatedDate.substring(0, 10), contact.Email, contact.Name, contact.MailingAddress.postalCode, contact.Id, 
-								"NewBee", contact.mentorID]);
+								"NewBee", contact.mentorId]);
 						} else if (contact.RecordTypeId === RECORD_TYPE_ID.mentor) {
 							// Process Mentor
 							mentorTable.push([contact.CreatedDate.substring(0, 10), contact.Email, contact.Name, contact.MailingAddress.postalCode, contact.Id, 
