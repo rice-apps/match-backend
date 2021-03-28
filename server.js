@@ -18,7 +18,7 @@ const RECORD_TYPE_ID = {
 	mentor: "0121U0000003rknQAA", // Emphasis on the "n" !!!
 }
 
-const CONTACT_QUERY = "SELECT Id, Email, Name, RecordTypeId, MailingAddress FROM Contact";
+const CONTACT_QUERY = "SELECT Id, CreatedDate, Email, Name, RecordTypeId, MailingAddress FROM Contact";
 const RELATIONSHIP_QUERY = "SELECT npe4__Contact__c, npe4__RelatedContact__c, npe4__Type__c FROM npe4__Relationship__c";
 
 // Instantiate Salesforce client with .env configuration
@@ -308,8 +308,8 @@ app.get('/relationships', function(request, response) {
 			return;
 		} else {
 			console.log(result.records);
-			// Response worked
-			let allContacts = result.records;
+			// Response worked, sort the contacts based on their created date
+			let allContacts = result.records.sort((contactA, contactB) => contactA.CreatedDate > contactB.CreatedDate ? 1 : -1);
 		
 			// Query Relationships
 			conn.query(RELATIONSHIP_QUERY, function(error, result) {
@@ -318,12 +318,11 @@ app.get('/relationships', function(request, response) {
 					response.status(500).json(error);
 					return;
 				} else {
-					// Add relationship data (mentor/mentee information) to contacts
+					// Add relationship data (mentor/newbee information) to contacts
 					let allRelationships = result.records;
 					allRelationships
 						.filter((relationship) => relationship.npe4__Type__c === "NewBee")
 						.forEach((relationship) => {
-							console.log("PROCESSING RELATIONSHIP")
 							let newBeeId = relationship.npe4__Contact__c
 							let mentorId = relationship.npe4__RelatedContact__c
 							// Add email of matched person in the appropriate "newbee" row
@@ -337,18 +336,18 @@ app.get('/relationships', function(request, response) {
 					})
 
 					// Construct result table
-					var newBeeTable = [["Email", "Name", "Zip Code", "Salesforce Id", "NewBee/Mentor", "Mentor ID"]]
-					var mentorTable = [["Email", "Name", "Zip Code", "Salesforce Id", "NewBee/Mentor"]]
+					var newBeeTable = [["Timestamp", "Email", "Name", "Zip Code", "Salesforce Id", "NewBee/Mentor", "Mentor ID"]]
+					var mentorTable = [["Timestamp", "Email", "Name", "Zip Code", "Salesforce Id", "NewBee/Mentor"]]
 
 					// Fill out the result table
 					allContacts.forEach(contact => {
 						if (contact.RecordTypeId === RECORD_TYPE_ID.newBee) {
 							// Process NewBee
-							newBeeTable.push([contact.Email, contact.Name, contact.MailingAddress.postalCode, contact.Id, 
+							newBeeTable.push([contact.CreatedDate.substring(0, 10), contact.Email, contact.Name, contact.MailingAddress.postalCode, contact.Id, 
 								"NewBee", contact.mentorID]);
 						} else if (contact.RecordTypeId === RECORD_TYPE_ID.mentor) {
 							// Process Mentor
-							mentorTable.push([contact.Email, contact.Name, contact.MailingAddress.postalCode, contact.Id, 
+							mentorTable.push([contact.CreatedDate.substring(0, 10), contact.Email, contact.Name, contact.MailingAddress.postalCode, contact.Id, 
 								"Mentor"]);
 						}
 					})
