@@ -371,38 +371,75 @@ app.get('/relationships', function(request, response) {
  * Endpoint for creating a relationship between two contacts
  */
 // TODO: change to POST request
-app.post('/match', function(request, response) {
+app.get('/match', function(request, response) {
 	console.log("Received MATCH request")
 	const session = getSession(request, response);
 	if (session == null) {
 		return;
 	}
+	// Get IDs from query parameters
 	const newbeeID = request.query.newbee;
 	const mentorID = request.query.mentor;
 
-	// TODO:
-	// - Verify: Newbee can only be matched to one Mentor (so it can't already be matched to any)
-	// - Verify: Newbee ID belongs to a newbee contact
-	// - Verify: Mentor ID belongs to a mentor contact
-
 	const conn = resumeSalesforceConnection(session);
-	let new_relationship = {
-		"npe4__Contact__c": newbeeID, // ID of the first contact
-		"npe4__RelatedContact__c": mentorID, // ID of the second contact
-		"npe4__Type__c": "Mentor" // second contact is the mentor of the first contact
-	}
-	conn.sobject("npe4__Relationship__c").create(new_relationship, function(err, ret) {
-		if (err || !ret.success) { return console.error(err, ret); }
-		console.log("Created record id : " + ret.id);
-		response.status(201).send('Succesfully matched! New record ID: ' + ret.id);
-	});
+
+	// - Verify: Newbee ID belongs to a newbee contact
+	conn.sobject("Contact")
+	.find({Id: newbeeID, RecordTypeId: RECORD_TYPE_ID.newBee})
+	.execute(function(err, records) {
+			if (err) { return console.error(err); }
+			if (records.length === 0) { 
+				response.status(406).send("Newbee ID doesn't belong to an existing Newbee"); 
+				return 1;
+			}
+	// - Verify: Mentor ID belongs to a mentor contact
+	}).then((err) => {
+		if (err) return err;
+		conn.sobject("Contact")
+		.find({Id: mentorID, RecordTypeId: RECORD_TYPE_ID.mentor})
+		.execute(function(err, records) {
+				if (err) { return console.error(err); }
+				if (records.length === 0){
+					response.status(406).send("Mentor ID doesn't belong to an existing Mentor");
+					return 1;
+				} 
+	// - Verify: Newbee can only be matched to one Mentor (so it can't already be matched to any)
+	}).then((err) => {
+		if (err) return err;
+		
+		conn.sobject("npe4__Relationship__c")
+		.find({npe4__Contact__c: newbeeID })
+		.execute(function(err, records) {
+			if (err) { return console.error(err); }
+			// Newbee can only be matched to one Mentor (so it can't already be matched to any)
+			if (records.length > 0) { 
+				response.status(406).send('Newbee already matched'); 
+				return 1;
+			}
+	// Checks Passed! Make the match!
+	}).then((err) => {
+		if (err) return val;
+
+		let new_relationship = {
+			"npe4__Contact__c": newbeeID, // ID of the first contact
+			"npe4__RelatedContact__c": mentorID, // ID of the second contact
+			"npe4__Type__c": "Mentor" // second contact is the mentor of the first contact
+		}
+		
+		conn.sobject("npe4__Relationship__c").create(new_relationship, function(err, ret) {
+			if (err || !ret.success) { return console.error(err, ret); }
+			console.log("Created record id : " + ret.id);
+			response.status(201).send('Succesfully matched! New record ID: ' + ret.id);
+			return 0;
+		});
+	});});});
 });
 
 /*
  * Endpoint for deleting a relationship between two contacts
  */
 // TODO: change to POST
-app.post('/unmatch', function(request, response) {
+app.get('/unmatch', function(request, response) {
 	console.log("Received UN-MATCH request")
 	const session = getSession(request, response);
 	if (session == null) {
@@ -413,26 +450,51 @@ app.post('/unmatch', function(request, response) {
 
 	const conn = resumeSalesforceConnection(session);
 
-	conn.sobject("npe4__Relationship__c")
-	  .find({npe4__Contact__c: mentorID, npe4__RelatedContact__c: newbeeID})
-	  .execute(function(err, records) {
-		if (err) { return console.error(err); }
-		if (records.length === 0){
-			response.status(406).send('No match found between given NewBee and Mentor!')
-		}
-		let relationshipIDs = records.map(records => records.Id);
-		
-		// Multiple records deletion
-		conn.sobject("npe4__Relationship__c"). del(relationshipIDs, function(err, rets) {
+	// Check that the IDs belong to the correct contact types
+	// - Verify: Newbee ID belongs to a newbee contact
+	conn.sobject("Contact")
+		.find({Id: newbeeID, RecordTypeId: RECORD_TYPE_ID.newBee})
+		.execute(function(err, records) {
 			if (err) { return console.error(err); }
-			rets.forEach((ret) => {
-				if (ret.success) console.log("Deleted Successfully : " + ret.id);
-			})
-			response.status(200).send('Succesfully unmatched! IDs: ' + relationshipIDs);
-		});
-	});
+			if (records.length === 0) { 
+				response.status(406).send("Newbee ID doesn't belong to an existing Newbee"); 
+				return 1;
+			}
+	}).then((err) => {
+		if (err) return err;
+		// - Verify: Mentor ID belongs to a mentor contact
+		conn.sobject("Contact")
+		.find({Id: mentorID, RecordTypeId: RECORD_TYPE_ID.mentor})
+		.execute(function(err, records) {
+			if (err) { return console.error(err); }
+			if (records.length === 0){
+				response.status(406).send("Mentor ID doesn't belong to an existing Mentor");
+				return 1;
+			} 
+	}).then((err) => {
+		if (err) return err;
+		conn.sobject("npe4__Relationship__c")
+	  		.find({npe4__Contact__c: mentorID, npe4__RelatedContact__c: newbeeID})
+	  		.execute(function(err, records) {
+				if (err) { return console.error(err); }
+				if (records.length === 0){
+					response.status(406).send('No match found between given NewBee and Mentor!')
+					return 1;
+				}
+				let relationshipIDs = records.map(records => records.Id);
+				
+				// Multiple records deletion
+				conn.sobject("npe4__Relationship__c").del(relationshipIDs, function(err, rets) {
+					if (err) { return console.error(err); }
+					rets.forEach((ret) => {
+						if (ret.success) console.log("Deleted Successfully : " + ret.id);
+					})
+					response.status(200).send('Succesfully unmatched! IDs: ' + relationshipIDs);
+					return 0;
+				});
+			});
+	});	});
 });
-
 
 
 app.listen(app.get('port'), function() {
