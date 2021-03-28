@@ -321,16 +321,14 @@ app.get('/relationships', function(request, response) {
 					// Add relationship data (mentor/newbee information) to contacts
 					let allRelationships = result.records;
 					allRelationships
-						.filter((relationship) => relationship.npe4__Type__c === "NewBee")
+						.filter((relationship) => relationship.npe4__Type__c === "Mentor")
 						.forEach((relationship) => {
 							let newBeeId = relationship.npe4__Contact__c
 							let mentorId = relationship.npe4__RelatedContact__c
-							// Add email of matched person in the appropriate "newbee" row
+
 							let newBee = allContacts.find((contact) => contact.Id === newBeeId);
-							let mentor = allContacts.find((contact) => contact.Id === mentorId);
 							
 							newBee.mentorId = mentorId
-
 					})
 
 					// Construct result table
