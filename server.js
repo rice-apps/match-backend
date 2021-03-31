@@ -107,7 +107,7 @@ app.get('/', function(request, response) {
 app.get('/auth/login', function(request, response) {
 	console.log("GOT LOGIN REQUEST");
 	// Redirect to Salesforce login/authorization page
-	res.set({
+	response.set({
 		"Access-Control-Allow-Origin": "*"
 	})
 	response.redirect(oauth2.getAuthorizationUrl({ scope: 'api' }));
