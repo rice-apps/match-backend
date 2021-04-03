@@ -107,9 +107,6 @@ app.get('/', function(request, response) {
 app.get('/auth/login', function(request, response) {
 	console.log("GOT LOGIN REQUEST");
 	// Redirect to Salesforce login/authorization page
-	response.set({
-		"Access-Control-Allow-Origin": "*"
-	})
 	response.redirect(oauth2.getAuthorizationUrl({ scope: 'api' }));
 });
 
@@ -147,7 +144,8 @@ app.get('/auth/callback', function(request, response) {
 
 		console.log("REQUEST SESSION:", request.session);
 		// Redirect to app main page
-		response.redirect('http://localhost:3000/');
+		// response.redirect('http://localhost:3000/');
+		response.redirect('https://match-simple-client.herokuapp.com/');
 	});
 });
 
