@@ -145,7 +145,7 @@ app.get('/auth/callback', function(request, response) {
 		console.log("REQUEST SESSION:", request.session);
 		// Redirect to app main page
 		// response.redirect('http://localhost:3000/');
-		response.redirect('https://match-simple-client.herokuapp.com/');
+		response.redirect(process.env.frontendUrl);
 	});
 });
 
