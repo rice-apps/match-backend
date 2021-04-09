@@ -183,6 +183,8 @@ app.get('/auth/logout', function(request, response) {
  * Endpoint for retrieving currently connected user
  */
 app.get('/auth/whoami', function(request, response) {
+	console.log("REQUEST:", request);
+
 	console.log("Getting session");
 	const session = getSession(request, response);
 	if (session == null) {
