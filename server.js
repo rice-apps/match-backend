@@ -43,18 +43,19 @@ const port = process.env.PORT || 8080;
 app.set('port', port);
 
 // TODO: Remove before deployment. Only necessary for testing
-app.use(cors());
-app.options('*', cors());
+// app.use(cors());
+// app.options('*', cors());
 // Allow CORS
-// app.use(function(req, res, next) {
-//     if (req.headers.origin) {
-//         res.header('Access-Control-Allow-Origin', '*')
-//         res.header('Access-Control-Allow-Headers', '*')
-//         res.header('Access-Control-Allow-Methods', '*')
-//         if (req.method === 'OPTIONS') return res.sendStatus(200);
-//     }
-//     next()
-// })
+app.use(function(req, res, next) {
+    if (req.headers.origin) {
+		res.header('Access-Control-Allow-Credentials', true)
+        res.header('Access-Control-Allow-Headers', '*')
+        res.header('Access-Control-Allow-Methods', '*')
+		res.header('Access-Control-Allow-Origin', 'http://localhost:3000')
+        if (req.method === 'OPTIONS') return res.sendStatus(200);
+    }
+    next()
+})
 // app.use(cors({ credentials: true, origin: true }))
 
 
@@ -107,7 +108,9 @@ app.get('/', function(request, response) {
 app.get('/auth/login', function(request, response) {
 	console.log("GOT LOGIN REQUEST");
 	// Redirect to Salesforce login/authorization page
-	response.redirect(oauth2.getAuthorizationUrl({ scope: 'api' }));
+	response.send({
+		loginUrl: oauth2.getAuthorizationUrl({ scope: 'api' })
+	});
 });
 
 /**
@@ -146,7 +149,6 @@ app.get('/auth/callback', function(request, response) {
 		console.log("SESSION:", request.session);
 		
 		// Redirect to app main page
-		// response.redirect('http://localhost:3000/');
 		response.redirect(process.env.frontendUrl);
 	});
 });
@@ -182,8 +184,7 @@ app.get('/auth/logout', function(request, response) {
 /**
  * Endpoint for retrieving currently connected user
  */
-app.get('/auth/whoami', function(request, response) {
-	console.log("REQUEST:", request);
+app.get('/auth/whoami', function(request, response) {	
 
 	console.log("Getting session");
 	const session = getSession(request, response);
