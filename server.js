@@ -142,7 +142,9 @@ app.get('/auth/callback', function(request, response) {
 		};
 		console.log("SAVED")
 
-		console.log("REQUEST SESSION:", request.session);
+		console.log("REQUEST:", request);
+		console.log("SESSION:", request.session);
+		
 		// Redirect to app main page
 		// response.redirect('http://localhost:3000/');
 		response.redirect(process.env.frontendUrl);
