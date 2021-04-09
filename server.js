@@ -67,7 +67,7 @@ app.use(
 		secret: process.env.sessionSecretKey,
 		cookie: { secure: process.env.isHttps === 'true', httpOnly: 'false', maxAge: 8*60*60*1000 },
 		resave: true,
-		saveUninitialized: true,
+		saveUninitialized: false,
 	})
 );
 
