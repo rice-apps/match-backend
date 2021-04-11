@@ -339,19 +339,19 @@ app.get('/relationships', function(request, response) {
 					})
 
 					// Construct result table
-					var newBeeTable = [["Timestamp", "Email", "Name", "Zip Code", "Salesforce Id", "NewBee/Mentor", "Mentor ID"]]
-					var mentorTable = [["Timestamp", "Email", "Name", "Zip Code", "Salesforce Id", "NewBee/Mentor"]]
+					var newBeeTable = [["Timestamp", "Email", "Name", "Zip Code", "Coordinate", "Salesforce Id", "NewBee/Mentor", "Mentor ID"]]
+					var mentorTable = [["Timestamp", "Email", "Name", "Zip Code", "Coordinate", "Salesforce Id", "NewBee/Mentor"]]
 
 					// Fill out the result table
 					allContacts.forEach(contact => {
 						if (contact.RecordTypeId === RECORD_TYPE_ID.newBee) {
 							// Process NewBee
-							newBeeTable.push([contact.CreatedDate.substring(0, 10), contact.Email, contact.Name, contact.MailingAddress.postalCode, contact.Id, 
-								"NewBee", contact.mentorId]);
+							newBeeTable.push([contact.CreatedDate.substring(0, 10), contact.Email, contact.Name, contact.MailingAddress.postalCode, 
+								[contact.MailingAddress.latitude, contact.MailingAddress.longitude], contact.Id, "NewBee", contact.mentorId]);
 						} else if (contact.RecordTypeId === RECORD_TYPE_ID.mentor) {
 							// Process Mentor
-							mentorTable.push([contact.CreatedDate.substring(0, 10), contact.Email, contact.Name, contact.MailingAddress.postalCode, contact.Id, 
-								"Mentor"]);
+							mentorTable.push([contact.CreatedDate.substring(0, 10), contact.Email, contact.Name, contact.MailingAddress.postalCode, 
+								[contact.MailingAddress.latitude, contact.MailingAddress.longitude], contact.Id, "Mentor"]);
 						}
 					})
 					var finalResult = {
